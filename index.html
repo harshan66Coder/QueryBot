@@ -1,51 +1,132 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <title>CSV/SQLite + Gemini Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-dH1yXpkATvNnK65D8JjVHxRv6BE8kYiZvZZyKySf+DqcmDhNSJJzBfkU19IkwkTw"
+    crossorigin="anonymous"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.5.0/sql-wasm.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    textarea { width: 100%; height: 60px; }
-    table, th, td { border: 1px solid #ccc; border-collapse: collapse; padding: 4px; }
-    canvas { max-width: 800px; margin-top: 10px; }
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+    }
+
+    textarea {
+      width: 100%;
+      height: 60px;
+      margin-bottom: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #e0e0e0;
+    }
+
+    tr:nth-child(even) {
+      background: #f4f4f4;
+    }
+
+    canvas {
+      max-width: 100%;
+      margin-top: 20px;
+    }
+
+    #chartCode {
+      white-space: pre-wrap;
+      background: #f1f1f1;
+      padding: 10px;
+      border: 1px dashed #aaa;
+      margin-top: 20px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    button {
+      padding: 8px 12px;
+      margin-top: 5px;
+    }
   </style>
 </head>
+
 <body>
-  <h2>Upload File (CSV or SQLite)</h2>
-  <input type="file" id="fileInput"><br><br>
 
-  <label>Description of file:</label><br>
-  <textarea id="desc"></textarea><br>
+  <div class="section">
+    <h2>1. Upload File (CSV or SQLite)</h2>
+    <input type="file" id="fileInput"><br><br>
+    <label>Generated Example Question <span id="exampleLoader" class="spinner-border spinner-border-sm"
+        style="display: none;"></span></label>
+    <textarea id="exampleQ" readonly></textarea>
+  </div>
 
-  <label>Generated example question:</label><br>
-  <textarea id="exampleQ"></textarea><br>
-  <button id="askExample">Use that question</button>
+  <div class="section">
+    <h2>2. Ask a Data Table Question</h2>
+    <textarea id="question" placeholder="Ask something like 'Show all cars with mileage above 20'"></textarea>
+    <button class="btn btn-primary" id="askBtn">
+      <span id="btnText">Get Table</span>
+      <span id="btnLoader" class="spinner-border spinner-border-sm" style="display: none;"></span>
+    </button>
+    <button class="btn btn-primary" id="downloadBtn" style="display:none">Download Table CSV</button>
+  </div>
 
-  <hr>
-  <h2>Ask a Data Table Question</h2>
-  <textarea id="question"></textarea><br>
-  <button id="askBtn">Get Table & Download CSV</button>
-  <br><br>
+  <div class="section">
+    <h2>3. Ask a Chart Question</h2>
+    <textarea id="chartQuestion" placeholder="Ask something like 'Show average price by brand'"></textarea>
+    <button class="btn btn-primary" id="chartQueryBtn">Generate Bar Chart</button>
+    <button class="btn btn-primary" id="downloadChartJs">Download Chart JS Code</button>
+  </div>
 
-  <h2>Ask a Chart Question</h2>
-  <textarea id="chartQuestion"></textarea><br>
-  <button id="chartQueryBtn">Generate Chart from Question</button>
-  <div id="result"></div>
+  <div class="section">
+    <h2>Generated SQL Query</h2>
+    <textarea id="generatedSQL" readonly></textarea>
+  </div>
+
+  <div class="section">
+    <h2>Output</h2>
+    <div id="result"></div>
+    <div id="chartCode"></div>
+  </div>
 
   <script>
-    const GEMINI_API_KEY = ' '; // testing purpose you can use the gemini api - key 
-    const GEMINI_MODEL = "gemini-2.5-flash";
-    let SQL, db, dbReady = false, tableData = "";
+    const GEMINI_API_KEY = '';
+
+    const GEMINI_MODEL = 'models/gemini-2.5-flash';
+    let SQL, db, dbReady = false, tableData = '';
 
     async function geminiPrompt(promptText) {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
-      });
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+        }
+      );
       const data = await res.json();
       return data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
     }
@@ -63,13 +144,16 @@
 
       const ext = file.name.split('.').pop().toLowerCase();
       if (!['csv', 'sqlite', 'db'].includes(ext)) {
-        alert('Only CSV or SQLite (.sqlite/.db) files are supported.');
+        e.target.value = '';
+        alert('Only CSV or SQLite files supported.');
         return;
       }
 
       if (ext === 'sqlite' || ext === 'db') {
         const buf = await file.arrayBuffer();
+        console.log('buf:', buf);
         db = new SQL.Database(new Uint8Array(buf));
+        console.log('db:', db);
       } else {
         const text = await file.text();
         const parsed = Papa.parse(text, { header: true });
@@ -78,26 +162,29 @@
 
         tableData = `Columns: ${headers.join(', ')}\n` + rows.slice(0, 10).map(r => JSON.stringify(r)).join('\n');
 
-        db.run(`DROP TABLE IF EXISTS data`);
-        db.run(`CREATE TABLE data (${headers.map(c => `"${c}" TEXT`).join(', ')})`);
-        const stmt = db.prepare(`INSERT INTO data VALUES (${headers.map(() => '?').join(',')})`);
-        rows.forEach(row => {
-          stmt.bind(headers.map(h => row[h]));
-          stmt.step();
-          stmt.reset();
-        });
-        stmt.free();
+        try {
+          db.run(`DROP TABLE IF EXISTS data`);
+          db.run(`CREATE TABLE data (${headers.map(c => `"${c}" TEXT`).join(', ')})`);
+          const stmt = db.prepare(`INSERT INTO data VALUES (${headers.map(() => '?').join(',')})`);
+          rows.forEach(row => {
+            stmt.bind(headers.map(h => row[h]));
+            stmt.step();
+            stmt.reset();
+          });
+          stmt.free();
+          alert('File uploaded and data inserted successfully!');
+          console.log('Upload complete');
+          document.getElementById('exampleLoader').style.display = 'inline-block';
+          const desc = await geminiPrompt(`You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`);
+          const exampleQ = await geminiPrompt(`Based on the following description, generate a simple question a user might ask:\n\n${desc}`);
+          document.getElementById('exampleQ').value = exampleQ;
+        } catch (err) {
+          console.error('Error during upload:', err);
+          alert('Upload failed. Check console for details.');
+        } finally {
+          document.getElementById('exampleLoader').style.display = 'none';
+        }
       }
-
-      const desc = await geminiPrompt(`You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`);
-      document.getElementById('desc').value = desc;
-
-      const exampleQ = await geminiPrompt(`Based on the following description, generate a simple question a user might ask:\n\n${desc}`);
-      document.getElementById('exampleQ').value = exampleQ;
-    };
-
-    document.getElementById('askExample').onclick = () => {
-      document.getElementById('question').value = document.getElementById('exampleQ').value;
     };
 
     async function getSchemaText() {
@@ -107,23 +194,33 @@
       tables.forEach(t => {
         const tableInfo = db.exec(`PRAGMA table_info(${t})`);
         const columns = tableInfo[0].values.map(row => row[1] + ' (' + row[2] + ')').join(', ');
-        schemaText += `Table \"${t}\": ${columns}\n`;
+        schemaText += `Table "${t}": ${columns}\n`;
       });
       return schemaText;
     }
 
     async function runLLMQuery(question, chartMode = false) {
+      const btnText = document.getElementById('btnText')
+      const btnLoader = document.getElementById('btnLoader')
+      btnText.innerHTML = 'Loading...'
+      btnLoader.style.display = 'inline-block';
+
       const schema = await getSchemaText();
-      const sqlPrompt = `You are an expert in SQLite. Given this schema:\n${schema}\n\nAnswer this question:\n\"${question}\"\n\nProvide a valid SQLite query only, no explanation.`;
+      const sqlPrompt = `You are an expert in SQLite. Given this schema:\n${schema}\n\nAnswer this question:\n"${question}"\n\nProvide a valid SQLite query only, no explanation.`;
       let sql = await geminiPrompt(sqlPrompt);
-      sql = sql.replace(/```(?:sqlite)?|```/g, '').trim(); 
+      sql = sql.replace(/```(?:sqlite)?|```/g, '').trim();
+      document.getElementById('generatedSQL').value = sql;
 
       let res;
       try {
         res = db.exec(sql);
+        console.log('SQL Result:', res);
       } catch (err) {
         document.getElementById('result').innerHTML = `<b>Error:</b> ${err.message}<br><pre>${sql}</pre>`;
         return;
+      } finally {
+        btnText.innerHTML = 'Get Table';
+        btnLoader.style.display = 'none';
       }
 
       if (!res || res.length === 0) {
@@ -133,26 +230,25 @@
 
       const cols = res[0].columns;
       const vals = res[0].values;
-
+      const resultDiv = document.getElementById('result');
       let html = '<table><tr>' + cols.map(h => `<th>${h}</th>`).join('') + '</tr>';
       vals.forEach(row => {
         html += '<tr>' + row.map(v => `<td>${v}</td>`).join('') + '</tr>';
       });
       html += '</table>';
-      document.getElementById('result').innerHTML = html;
+      resultDiv.innerHTML = html;
 
-      if (!chartMode) {
-        const csv = [cols.join(','), ...vals.map(r => r.join(','))].join('\n');
-        html += '<button id="downloadCsv">Download CSV</button>';
-        document.getElementById('result').innerHTML += html;
-        document.getElementById('downloadCsv').onclick = () => {
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-          a.download = 'result.csv';
-          a.click();
-        };
-        return;
-      }
+      const csv = [cols.join(','), ...vals.map(r => r.join(','))].join('\n');
+      const downloadBtn = document.getElementById('downloadBtn');
+      downloadBtn.style.display = 'inline-block';
+      downloadBtn.onclick = () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+        a.download = 'query_result.csv';
+        a.click();
+      };
+
+      if (!chartMode) return;
 
       const labelIndex = cols.findIndex((_, i) => typeof vals[0][i] === 'string');
       const valueIndex = cols.findIndex((_, i) => i !== labelIndex && !isNaN(parseFloat(vals[0][i])));
@@ -161,9 +257,10 @@
       const labels = vals.map(r => r[labelIndex]);
       const data = vals.map(r => parseFloat(r[valueIndex]) || 0);
 
-      document.getElementById('result').innerHTML += '<canvas id="myChart"></canvas>';
+      resultDiv.innerHTML += '<canvas id="myChart"></canvas>';
       const ctx = document.getElementById('myChart').getContext('2d');
-      new Chart(ctx, {
+
+      const chartConfig = {
         type: 'bar',
         data: {
           labels,
@@ -176,12 +273,23 @@
         options: {
           responsive: true,
           scales: {
-            y: {
-              beginAtZero: true
-            }
+            y: { beginAtZero: true }
           }
         }
-      });
+      };
+
+      new Chart(ctx, chartConfig);
+      const jsCode = 'const config = ' + JSON.stringify(chartConfig, null, 2);
+      document.getElementById('chartCode').innerText = '// Chart.js Code Generated by AI\n' + jsCode;
+
+      const downloadLink = document.getElementById('downloadChartJs');
+      downloadLink.onclick = () => {
+        const blob = new Blob([jsCode], { type: 'application/javascript' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'chart-config.js';
+        a.click();
+      };
     }
 
     document.getElementById('askBtn').onclick = () => {
@@ -192,9 +300,10 @@
 
     document.getElementById('chartQueryBtn').onclick = () => {
       const q = document.getElementById('chartQuestion').value.trim();
-      if (!q) return alert("Enter a valid chart question.");
+      if (!q) return alert("Enter a chart prompt.");
       runLLMQuery(q, true);
     };
   </script>
 </body>
+
 </html>
