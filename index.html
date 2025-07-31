@@ -62,6 +62,8 @@
       }
 
       .section {
+            /* display: none; */
+
         margin-bottom: 30px;
         color: white;
         padding: 20px;
@@ -103,12 +105,32 @@
       .input-filed:hover {
         background-color: #2e2c2c;
       }
+        #exampleQ {
+
+      display: inline-block;
+      
+      min-width: 300px;
+      min-height: 200px;
+      padding: 10px;
+      background-color: #282a2b;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      white-space: pre-wrap; 
+      word-wrap: break-word;
+      font-family: Arial, sans-serif;
+    }
+    .section.outputLayer{
+      display: none;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 15px;
+    }
+   
     </style>
   </head>
 
   <body>
     <div class="section">
-      <div></div>
       <h2>1. Upload File (CSV or SQLite)</h2>
 
       <label for="input"
@@ -127,7 +149,7 @@
           style="display: none"
         ></span
       ></label>
-      <textarea id="exampleQ" readonly></textarea>
+      <textarea id="exampleQ"></textarea>
       <div class="section" id="tableInspectorSection" style="display: none">
         <h2>Table Inspector</h2>
         <label for="tableList" style="color: white; font-weight: bold"
@@ -194,7 +216,7 @@
       </div>
     </div>
 
-    <div class="section">
+    <div class="section outputLayer" id="res">
       <h2>Output</h2>
 
       <div
@@ -230,6 +252,16 @@
     </div>
 
     <script>
+
+    const btnText = document.getElementById("btnText");
+    const resDiv = document.getElementById("res");
+
+    if (btnText.textContent.trim().length > 0) {
+      resDiv.style.display = "block";
+    } else {
+      resDiv.style.display = "none";
+    }
+
       const GEMINI_API_KEY = "";
       const GEMINI_MODEL = "models/gemini-2.5-flash";
       let SQL,
@@ -319,13 +351,14 @@
             stmt.free();
             alert('File uploaded and data inserted successfully!');
             document.getElementById('exampleLoader').style.display = 'inline-block';
+            refreshTableInspector();
           } catch (err) {
             console.error('Error during upload:', err);
             alert('Upload failed. Check console for details.');
           }
         }
         const desc = await geminiPrompt(`You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`);
-        const exampleQ = await geminiPrompt(`Based on the following description, generate a simple question a user might ask:\n\n${desc}`);
+        const exampleQ = await geminiPrompt(`From the description below, please generate a minimum of 5 simple one line user-friendly questions:\n\n${desc}`);
         document.getElementById('exampleQ').value = exampleQ;
         document.getElementById('exampleLoader').style.display = 'none';
       };
@@ -348,9 +381,12 @@
 
       async function runLLMQuery(question, chartMode = false) {
         const btnText = document.getElementById("btnText");
+
         const btnLoader = document.getElementById("btnLoader");
         const btnChart = document.getElementById("chartQueryBtnText");
         const btnChartLoader = document.getElementById("chartLoader");
+
+        
         if (chartMode) {
           btnChart.innerHTML = "Loading...";
           btnChartLoader.style.display = "inline-block";
