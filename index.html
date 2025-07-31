@@ -1,405 +1,559 @@
 <!DOCTYPE html>
 <html>
-
-<head>
-  <meta charset="utf-8">
-  <title>CSV/SQLite + Gemini Tool</title>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-dH1yXpkATvNnK65D8JjVHxRv6BE8kYiZvZZyKySf+DqcmDhNSJJzBfkU19IkwkTw"
-    crossorigin="anonymous"></script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.5.0/sql-wasm.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 20px;
-      background: #080808;
-    }
-
-    textarea {
-      width: 100%;
-      height: 60px;
-      margin-bottom: 10px;
-      background: rgb(65, 64, 64);
-      color: white;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-
-    th,
-    td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: left;
-    }
-
-
-    tr:nth-child(even) {
-      background: #2b2a2a;
-    }
-
-    canvas {
-      max-width: 100%;
-      margin-top: 20px;
-    }
-
-    #chartCode {
-      white-space: pre-wrap;
-      padding: 10px;
-      border: 1px dashed #aaa;
-      margin-top: 20px;
-    }
-
-    .section {
-      margin-bottom: 30px;
-      color: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    button {
-      padding: 8px 12px;
-      margin-top: 5px;
-    }
-  </style>
-</head>
-
-<body>
-
-  <div class="section">
-    <h2>1. Upload File (CSV or SQLite)</h2>
-    <input type="file" id="fileInput"><br><br>
-    <label>Generated Example Question <span id="exampleLoader" class="spinner-border spinner-border-sm"
-        style="display: none;"></span></label>
-    <textarea id="exampleQ" readonly></textarea>
-    <div id="chartCode"></div>
-<div class="section" id="tableInspectorSection" style="display:none;">
-  <h2>Table Inspector</h2>
-  <label for="tableList" style="color:white; font-weight:bold;">Select Table:</label>
-  <select id="tableList" class="form-select" style="width:auto; display:inline-block; margin-left:12px;"></select>
-
-  <div style="margin-top:16px;">
-    <div>
-      <b>CREATE TABLE SQL:</b>
-      <pre id="tableCreateSQL" style="color:#aad; background:#1c1d20;padding:10px;margin-top:8px;max-width:100%;overflow-x:auto;"></pre>
-    </div>
-    <div style="margin-top:22px">
-      <b>Columns &amp; Types</b>
-      <table id="tableColsInfo" style="background-color:#1c1d20; color:white;"></table>
-    </div>
-  </div>
-</div>
-
-  </div>
-
-  <div class="section">
-    <h2>2. Ask a Data Table Question</h2>
-    <textarea id="question" placeholder="Ask something like 'Show all cars with mileage above 20'"></textarea>
-    <button class="btn btn-primary" id="askBtn">
-      <span id="btnText">Get Table</span>
-      <span id="btnLoader" class="spinner-border spinner-border-sm" style="display: none;"></span>
-    </button>
-    <button class="btn btn-primary" id="downloadBtn" style="display:none">Download Table CSV</button>
-  </div>
-
-  <div class="section">
-    <h2>3. Ask a Chart Question</h2>
-    <textarea id="chartQuestion" placeholder="Ask something like 'Show average price by brand'"></textarea>
-    <button class="btn btn-primary" id="chartQueryBtn">
-      <span id="chartQueryBtnText">Generate Bar Chart </span><span id="chartLoader" class="spinner-border spinner-border-sm"
-        style="display: none;"></span></button>
-    <button class="btn btn-primary" id="downloadChartJs">Download Chart JS Code</button>
-  </div>
-
-  <div class="section">
-    <h2>Generated SQL Query</h2>
-    <textarea id="generatedSQL" readonly></textarea>
-  </div>
-
-  <div class="section">
-    <h2>Output</h2>
-    <div id="result"></div>
-    <div id="chartCode"></div>
-  </div>
-
-  <script>
-    const GEMINI_API_KEY = '';
-    const GEMINI_MODEL = 'models/gemini-2.5-flash';
-    let SQL, db, dbReady = false, tableData = '';
-
-    async function geminiPrompt(promptText) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
-        }
-      );
-      const data = await res.json();
-      return data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
-    }
-
-    initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.5.0/${file}` }).then(SQLlib => {
-      SQL = SQLlib;
-      db = new SQL.Database();
-      dbReady = true;
-    });
-
-    document.getElementById('fileInput').onchange = async e => {
-      if (!dbReady) return alert("SQL engine still loading...");
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const ext = file.name.split('.').pop().toLowerCase();
-      if (!['csv', 'sqlite', 'db'].includes(ext)) {
-        e.target.value = '';
-        alert('Only CSV or SQLite files supported.');
-        return;
+  <head>
+    <meta charset="utf-8" />
+    <title>CSV/SQLite + Gemini Tool</title>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-dH1yXpkATvNnK65D8JjVHxRv6BE8kYiZvZZyKySf+DqcmDhNSJJzBfkU19IkwkTw"
+      crossorigin="anonymous"
+    ></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.5.0/sql-wasm.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 20px;
+        background: #080808;
       }
 
-      if (ext === 'sqlite' || ext === 'db') {
-        const buf = await file.arrayBuffer();
-        console.log('buf:', buf);
-        db = new SQL.Database(new Uint8Array(buf));
-        console.log('db:', db);
-      } else {
-        const text = await file.text();
-        const parsed = Papa.parse(text, { header: true });
-        const headers = parsed.meta.fields;
-        const rows = parsed.data.filter(row => Object.values(row).some(val => val !== ""));
-
-        tableData = `Columns: ${headers.join(', ')}\n` + rows.slice(0, 10).map(r => JSON.stringify(r)).join('\n');
-
-        try {
-          db.run(`DROP TABLE IF EXISTS data`);
-          db.run(`CREATE TABLE data (${headers.map(c => `"${c}" TEXT`).join(', ')})`);
-          const stmt = db.prepare(`INSERT INTO data VALUES (${headers.map(() => '?').join(',')})`);
-          rows.forEach(row => {
-            stmt.bind(headers.map(h => row[h]));
-            stmt.step();
-            stmt.reset();
-          });
-          stmt.free();
-          alert('File uploaded and data inserted successfully!');
-          console.log('Upload complete');
-          document.getElementById('exampleLoader').style.display = 'inline-block';
-          const desc = await geminiPrompt(`You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`);
-          const exampleQ = await geminiPrompt(`Based on the following description, generate a simple question a user might ask:\n\n${desc}`);
-          document.getElementById('exampleQ').value = exampleQ;
-          refreshTableInspector();
-        } catch (err) {
-          console.error('Error during upload:', err);
-          alert('Upload failed. Check console for details.');
-        } finally {
-          document.getElementById('exampleLoader').style.display = 'none';
-        }
+      textarea {
+        width: 100%;
+        height: 60px;
+        margin-bottom: 10px;
+        background: rgb(65, 64, 64);
+        color: white;
       }
-    };
 
-    async function getSchemaText() {
-      const schemaRes = db.exec("SELECT name FROM sqlite_master WHERE type='table'");
-      const tables = schemaRes.map(r => r.values.map(v => v[0])).flat();
-      let schemaText = '';
-      tables.forEach(t => {
-        const tableInfo = db.exec(`PRAGMA table_info(${t})`);
-        const columns = tableInfo[0].values.map(row => row[1] + ' (' + row[2] + ')').join(', ');
-        schemaText += `Table "${t}": ${columns}\n`;
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: left;
+      }
+
+      tr:nth-child(even) {
+        background: #2b2a2a;
+      }
+
+      canvas {
+        max-width: 100%;
+        margin-top: 20px;
+      }
+
+      #chartCode {
+        white-space: pre-wrap;
+        padding: 10px;
+        border: 1px dashed #aaa;
+        margin-top: 20px;
+      }
+
+      .section {
+        margin-bottom: 30px;
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      button {
+        padding: 8px 12px;
+        margin-top: 5px;
+      }
+      .code-block {
+        background: #1e1e1e;
+        color: #c5c8c6;
+        padding: 16px;
+        margin-top: 10px;
+        font-family: Consolas, Monaco, "Courier New", monospace;
+        font-size: 14px;
+        border-radius: 6px;
+        border: 1px solid #333;
+        max-width: 50%;
+        max-height: 20%;
+        overflow-x: auto;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
+      }
+      .input-filed {
+        cursor: pointer;
+        background-color: #36454f;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        font-weight: bold;
+        width: 100%;
+      }
+      .input-filed:hover {
+        background-color: #2e2c2c;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="section">
+      <div></div>
+      <h2>1. Upload File (CSV or SQLite)</h2>
+
+      <label for="input"
+        >Upload CSV <span class="text-danger">(.csv)</span> or SQLite database
+        <span class="text-danger">(.sqlite , .db)</span>
+      </label>
+      <input type="file" id="fileInput" class="input-filed mt-2" /><br /><br />
+
+      <p id="errmessage"></p>
+
+      <label
+        >Generated Example Question
+        <span
+          id="exampleLoader"
+          class="spinner-border spinner-border-sm"
+          style="display: none"
+        ></span
+      ></label>
+      <textarea id="exampleQ" readonly></textarea>
+      <div class="section" id="tableInspectorSection" style="display: none">
+        <h2>Table Inspector</h2>
+        <label for="tableList" style="color: white; font-weight: bold"
+          >Select Table:</label
+        >
+        <select
+          id="tableList"
+          class="form-select"
+          style="
+            width: 80px;
+            height: 45px;
+            display: inline-block;
+            margin-left: 12px;
+          "
+        ></select>
+
+        <div style="margin-top: 16px">
+          <div>
+            <b>CREATE TABLE SQL:</b>
+            <pre
+              id="tableCreateSQL"
+              class="code-block"
+              style="
+                color: #aad;
+                background: #1c1d20;
+                padding: 10px;
+                margin-top: 8px;
+                max-width: 100%;
+                overflow-x: auto;
+              "
+            ></pre>
+          </div>
+          <div style="margin-top: 22px">
+            <b>Columns &amp; Types</b>
+            <table
+              id="tableColsInfo"
+              style="background-color: #1c1d20; color: white"
+            ></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>2. Ask a Question About Your Data</h2>
+      <textarea
+        id="question"
+        placeholder="Ask something like 'Show all cars with mileage above 20'"
+      ></textarea>
+      <button class="btn btn-primary" id="askBtn">
+        <span id="btnText">Get Table</span>
+        <span
+          id="btnLoader"
+          class="spinner-border spinner-border-sm"
+          style="display: none"
+        ></span>
+      </button>
+    </div>
+
+    <div class="section">
+      <h2>Generated SQL Query</h2>
+      <textarea id="generatedSQL" readonly></textarea>
+    </div>
+
+    <div class="section">
+      <h2>Output</h2>
+
+      <div
+        class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"
+      >
+        <button class="btn btn-primary mb-3" id="downloadBtn">
+          Download Table CSV
+        </button>
+
+        <textarea
+          id="chartQuestion"
+          class="form-control"
+          style="flex: 1; height: 30px; width: 700px"
+          placeholder="Ask something like 'Show average price by brand'"
+        ></textarea>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary mb-3" id="chartQueryBtn">
+            <span id="chartQueryBtnText">Generate Bar Chart</span>
+            <span
+              id="chartLoader"
+              class="spinner-border spinner-border-sm"
+              style="display: none"
+            ></span>
+          </button>
+          <button class="btn btn-primary mb-3" id="downloadChartJs">
+            Download Chart JS Code
+          </button>
+        </div>
+      </div>
+      <div id="result"></div>
+      <div id="chartCode" ></div>
+    </div>
+
+    <script>
+      const GEMINI_API_KEY = "AIzaSyCozdz8bgVQhRo8z6pIj2FvwZUylnw8BJA";
+      const GEMINI_MODEL = "models/gemini-2.5-flash";
+      let SQL,
+        db,
+        dbReady = false,
+        tableData = "";
+
+      async function geminiPrompt(promptText) {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+            }),
+          }
+        );
+        const data = await res.json();
+        return (
+          data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response"
+        );
+      }
+
+      initSqlJs({
+        locateFile: (file) =>
+          `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.5.0/${file}`,
+      }).then((SQLlib) => {
+        SQL = SQLlib;
+        db = new SQL.Database();
+        dbReady = true;
       });
-      return schemaText;
-    }
 
-    async function runLLMQuery(question, chartMode = false) {
-      const btnText = document.getElementById('btnText')
-      const btnLoader = document.getElementById('btnLoader')
-      const btnChart = document.getElementById('chartQueryBtnText')
-      const btnChartLoader = document.getElementById('chartLoader')
-      if (chartMode) {
-        btnChart.innerHTML = 'Loading...';
-        btnChartLoader.style.display = 'inline-block';
-      } else {
-        btnText.innerHTML = 'Loading...'
-        btnLoader.style.display = 'inline-block';
-      }
+      document.getElementById("fileInput").onchange = async (e) => {
+        const errMessage = document.getElementById("errmessage");
 
+        if (!dbReady) return alert("SQL engine still loading...");
+        const file = e.target.files[0];
+        if (!file) return;
 
-      const schema = await getSchemaText();
-      const sqlPrompt = `You are an expert in SQLite. Given this schema:\n${schema}\n\nAnswer this question:\n"${question}"\n\nProvide a valid SQLite query only, no explanation.`;
-      let sql = await geminiPrompt(sqlPrompt);
-      sql = sql.replace(/```(?:sqlite)?|```/g, '').trim();
-      document.getElementById('generatedSQL').value = sql;
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (!["csv", "sqlite", "db"].includes(ext)) {
+          e.target.value = "";
+          alert("Only CSV or SQLite files supported.");
+          errMessage.innerHTML = "only support CSV ,SQLite ,.db";
+          return;
+        }
 
-      let res;
-      try {
-        res = db.exec(sql);
-        console.log('SQL Result:', res);
-      } catch (err) {
-        document.getElementById('result').innerHTML = `<b>Error:</b> ${err.message}<br><pre>${sql}</pre>`;
-        return;
-      } finally {
-        if (chartMode) {
-          btnChart.innerHTML = 'Generate Bar Chart';
-          btnChartLoader.style.display = 'none';
+        if (ext === "sqlite" || ext === "db") {
+          const buf = await file.arrayBuffer();
+          console.log("buf:", buf);
+          db = new SQL.Database(new Uint8Array(buf));
+          console.log("db:", db);
         } else {
-          btnText.innerHTML = 'Get Table';
-          btnLoader.style.display = 'none';
-        }
-      }
+          const text = await file.text();
+          const parsed = Papa.parse(text, { header: true });
+          const headers = parsed.meta.fields;
+          const rows = parsed.data.filter((row) =>
+            Object.values(row).some((val) => val !== "")
+          );
 
-      if (!res || res.length === 0) {
-        document.getElementById('result').textContent = 'No results.';
-        return;
-      }
+          tableData =
+            `Columns: ${headers.join(", ")}\n` +
+            rows
+              .slice(0, 10)
+              .map((r) => JSON.stringify(r))
+              .join("\n");
 
-      const cols = res[0].columns;
-      const vals = res[0].values;
-      const resultDiv = document.getElementById('result');
-      let html = '<table><tr>' + cols.map(h => `<th>${h}</th>`).join('') + '</tr>';
-      vals.forEach(row => {
-        html += '<tr>' + row.map(v => `<td>${v}</td>`).join('') + '</tr>';
-      });
-      html += '</table>';
-      resultDiv.innerHTML = html;
-
-      const csv = [cols.join(','), ...vals.map(r => r.join(','))].join('\n');
-      const downloadBtn = document.getElementById('downloadBtn');
-      downloadBtn.style.display = 'inline-block';
-      downloadBtn.onclick = () => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-        a.download = 'query_result.csv';
-        a.click();
-      };
-
-      if (!chartMode) return;
-
-      const labelIndex = cols.findIndex((_, i) => typeof vals[0][i] === 'string');
-      console.log(cols, labelIndex, vals[0]);
-      const valueIndex = cols.findIndex((_, i) => i !== labelIndex && !isNaN(parseFloat(vals[0][i])));
-      console.log('Label Index:', labelIndex, 'Value Index:', valueIndex);
-      if (labelIndex === -1 || valueIndex === -1) return alert("Improper data for charting kindly try another question.");
-
-      const labels = vals.map(r => r[labelIndex]);
-      const data = vals.map(r => parseFloat(r[valueIndex]) || 0);
-      console.log('Labels:', labels, 'Data:', data);
-      resultDiv.innerHTML += '<canvas id="myChart"></canvas>';
-      const ctx = document.getElementById('myChart').getContext('2d');
-
-      const chartConfig = {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            label: `${cols[valueIndex]} by ${cols[labelIndex]}`,
-            data,
-            backgroundColor: '#4a90e2'
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: { beginAtZero: true }
+          try {
+            db.run(`DROP TABLE IF EXISTS data`);
+            db.run(
+              `CREATE TABLE data (${headers
+                .map((c) => `"${c}" TEXT`)
+                .join(", ")})`
+            );
+            const stmt = db.prepare(
+              `INSERT INTO data VALUES (${headers.map(() => "?").join(",")})`
+            );
+            rows.forEach((row) => {
+              stmt.bind(headers.map((h) => row[h]));
+              stmt.step();
+              stmt.reset();
+            });
+            stmt.free();
+            alert("File uploaded and data inserted successfully!");
+            console.log("Upload complete");
+            document.getElementById("exampleLoader").style.display =
+              "inline-block";
+            const desc = await geminiPrompt(
+              `You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`
+            );
+            const exampleQ = await geminiPrompt(
+              `Based on the following description, generate a simple question a user might ask:\n\n${desc}`
+            );
+            document.getElementById("exampleQ").value = exampleQ;
+            refreshTableInspector();
+          } catch (err) {
+            console.error("Error during upload:", err);
+            alert("Upload failed. Check console for details.");
+          } finally {
+            document.getElementById("exampleLoader").style.display = "none";
           }
         }
       };
 
-      new Chart(ctx, chartConfig);
-      const jsCode = 'const config = ' + JSON.stringify(chartConfig, null, 2);
-      document.getElementById('chartCode').innerText = '// Chart.js Code Generated by AI\n' + jsCode;
+      async function getSchemaText() {
+        const schemaRes = db.exec(
+          "SELECT name FROM sqlite_master WHERE type='table'"
+        );
+        const tables = schemaRes.map((r) => r.values.map((v) => v[0])).flat();
+        let schemaText = "";
+        tables.forEach((t) => {
+          const tableInfo = db.exec(`PRAGMA table_info(${t})`);
+          const columns = tableInfo[0].values
+            .map((row) => row[1] + " (" + row[2] + ")")
+            .join(", ");
+          schemaText += `Table "${t}": ${columns}\n`;
+        });
+        return schemaText;
+      }
 
-      const downloadLink = document.getElementById('downloadChartJs');
-      downloadLink.onclick = () => {
-        const blob = new Blob([jsCode], { type: 'application/javascript' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'chart-config.js';
-        a.click();
+      async function runLLMQuery(question, chartMode = false) {
+        const btnText = document.getElementById("btnText");
+        const btnLoader = document.getElementById("btnLoader");
+        const btnChart = document.getElementById("chartQueryBtnText");
+        const btnChartLoader = document.getElementById("chartLoader");
+        if (chartMode) {
+          btnChart.innerHTML = "Loading...";
+          btnChartLoader.style.display = "inline-block";
+        } else {
+          btnText.innerHTML = "Loading...";
+          btnLoader.style.display = "inline-block";
+        }
+
+        const schema = await getSchemaText();
+        const sqlPrompt = `You are an expert in SQLite. Given this schema:\n${schema}\n\nAnswer this question:\n"${question}"\n\nProvide a valid SQLite query only, no explanation.`;
+        let sql = await geminiPrompt(sqlPrompt);
+        sql = sql.replace(/```(?:sqlite)?|```/g, "").trim();
+        document.getElementById("generatedSQL").value = sql;
+
+        let res;
+        try {
+          res = db.exec(sql);
+          console.log("SQL Result:", res);
+        } catch (err) {
+          document.getElementById(
+            "result"
+          ).innerHTML = `<b>Error:</b> ${err.message}<br><pre>${sql}</pre>`;
+          return;
+        } finally {
+          if (chartMode) {
+            btnChart.innerHTML = "Generate Bar Chart";
+            btnChartLoader.style.display = "none";
+          } else {
+            btnText.innerHTML = "Get Table";
+            btnLoader.style.display = "none";
+          }
+        }
+
+        if (!res || res.length === 0) {
+          document.getElementById("result").textContent = "No results.";
+          return;
+        }
+
+        const cols = res[0].columns;
+        const vals = res[0].values;
+        const resultDiv = document.getElementById("result");
+        let html =
+          "<table><tr>" + cols.map((h) => `<th>${h}</th>`).join("") + "</tr>";
+        vals.forEach((row) => {
+          html += "<tr>" + row.map((v) => `<td>${v}</td>`).join("") + "</tr>";
+        });
+        html += "</table>";
+        resultDiv.innerHTML = html;
+
+        const csv = [cols.join(","), ...vals.map((r) => r.join(","))].join(
+          "\n"
+        );
+        const downloadBtn = document.getElementById("downloadBtn");
+        downloadBtn.style.display = "inline-block";
+        downloadBtn.onclick = () => {
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+          a.download = "query_result.csv";
+          a.click();
+        };
+
+        if (!chartMode) return;
+
+        const labelIndex = cols.findIndex(
+          (_, i) => typeof vals[0][i] === "string"
+        );
+        console.log(cols, labelIndex, vals[0]);
+        const valueIndex = cols.findIndex(
+          (_, i) => i !== labelIndex && !isNaN(parseFloat(vals[0][i]))
+        );
+        console.log("Label Index:", labelIndex, "Value Index:", valueIndex);
+        if (labelIndex === -1 || valueIndex === -1)
+          return alert(
+            "Improper data for charting kindly try another question."
+          );
+
+        const labels = vals.map((r) => r[labelIndex]);
+        const data = vals.map((r) => parseFloat(r[valueIndex]) || 0);
+        console.log("Labels:", labels, "Data:", data);
+        resultDiv.innerHTML += '<canvas id="myChart"></canvas>';
+        const ctx = document.getElementById("myChart").getContext("2d");
+
+        const chartConfig = {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: `${cols[valueIndex]} by ${cols[labelIndex]}`,
+                data,
+                backgroundColor: [
+                  "#4a90e2",
+                  "#50e3c2",
+                  "#b8e986",
+                  "#f5a623",
+                  "#e94e77",
+                ],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true },
+            },
+          },
+        };
+
+        new Chart(ctx, chartConfig);
+        const jsCode = "const config = " + JSON.stringify(chartConfig, null, 2);
+        document.getElementById("chartCode").innerText =
+          "// Chart.js Code Generated by AI\n" + jsCode;
+
+        const downloadLink = document.getElementById("downloadChartJs");
+        downloadLink.onclick = () => {
+          const blob = new Blob([jsCode], { type: "application/javascript" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "chart-config.js";
+          a.click();
+        };
+      }
+
+      document.getElementById("askBtn").onclick = () => {
+        const q = document.getElementById("question").value.trim();
+        if (!q) return alert("Enter a valid question.");
+        runLLMQuery(q, false);
       };
-    }
 
-    document.getElementById('askBtn').onclick = () => {
-      const q = document.getElementById('question').value.trim();
-      if (!q) return alert("Enter a valid question.");
-      runLLMQuery(q, false);
-    };
+      document.getElementById("chartQueryBtn").onclick = () => {
+        const q = document.getElementById("chartQuestion").value.trim();
+        if (!q) return alert("Enter a chart prompt.");
+        runLLMQuery(q, true);
+      };
 
-    document.getElementById('chartQueryBtn').onclick = () => {
-      const q = document.getElementById('chartQuestion').value.trim();
-      if (!q) return alert("Enter a chart prompt.");
-      runLLMQuery(q, true);
-    };
+      document.getElementById("useExampleBtn").onclick = () => {
+        const exampleQ = document.getElementById("exampleQ").value;
+        document.getElementById("question").value = exampleQ;
+      };
+      async function refreshTableInspector() {
+        const tableNameRes = db.exec(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        );
+        if (!tableNameRes.length)
+          return (document.getElementById(
+            "tableInspectorSection"
+          ).style.display = "none");
 
-    document.getElementById('useExampleBtn').onclick = () => {
-      const exampleQ = document.getElementById('exampleQ').value;
-      document.getElementById('question').value = exampleQ;
-    };
-  async function refreshTableInspector() {
-  // Get all table names
-  const tableNameRes = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
-  if (!tableNameRes.length) return document.getElementById('tableInspectorSection').style.display='none';
+        const tables = tableNameRes[0].values.map((r) => r[0]);
+        const sel = document.getElementById("tableList");
+        sel.innerHTML = "";
+        tables.forEach((t) => {
+          const opt = document.createElement("option");
+          opt.value = t;
+          opt.textContent = t;
+          sel.appendChild(opt);
+        });
+        document.getElementById("tableInspectorSection").style.display =
+          "block";
+        showTableSchemaFor(tables[0]);
+      }
 
-  const tables = tableNameRes[0].values.map(r=>r[0]);
-  const sel = document.getElementById('tableList');
-  sel.innerHTML = '';
-  tables.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t;
-    opt.textContent = t;
-    sel.appendChild(opt);
-  });
-  document.getElementById('tableInspectorSection').style.display = 'block';
-  showTableSchemaFor(tables[0]);
-}
+      function showTableSchemaFor(table) {
+        let createSQL = "";
+        try {
+          const createSQLArr = db.exec(
+            `SELECT sql FROM sqlite_master WHERE type='table' AND name=?`,
+            [table]
+          );
+          createSQL = createSQLArr[0]?.values[0]?.[0] || "(not found)";
+        } catch {
+          createSQL = "(not found)";
+        }
+        document.getElementById("tableCreateSQL").textContent = createSQL;
 
-function showTableSchemaFor(table) {
-  // 1. Create Table SQL
-  let createSQL = "";
-  try {
-    const createSQLArr = db.exec(`SELECT sql FROM sqlite_master WHERE type='table' AND name=?`, [table]);
-    createSQL = createSQLArr[0]?.values[0]?.[0] || "(not found)";
-  } catch {
-    createSQL = "(not found)";
-  }
-  document.getElementById('tableCreateSQL').textContent = createSQL;
-
-  // 2. Table Columns Info
-  let tableInfo = [];
-  try {
-    const tiRes = db.exec(`PRAGMA table_info(${table})`);
-    tableInfo = tiRes[0]?.values || [];
-  } catch {
-    tableInfo = [];
-  }
-  const tbl = document.getElementById('tableColsInfo');
-  tbl.innerHTML = '<tr><th>Name</th><th>Type</th><th>Not Null</th><th>Default</th><th>Primary Key</th></tr>';
-  tableInfo.forEach(row => {
-    // See: https://www.sqlite.org/pragma.html#pragma_table_info
-    // row: [cid, name, type, notnull, dflt_value, pk]
-    tbl.innerHTML += `<tr>
+        let tableInfo = [];
+        try {
+          const tiRes = db.exec(`PRAGMA table_info(${table})`);
+          tableInfo = tiRes[0]?.values || [];
+        } catch {
+          tableInfo = [];
+        }
+        const tbl = document.getElementById("tableColsInfo");
+        tbl.innerHTML =
+          "<tr><th>Name</th><th>Type</th><th>Not Null</th><th>Default</th><th>Primary Key</th></tr>";
+        tableInfo.forEach((row) => {
+          tbl.innerHTML += `<tr>
       <td>${row[1]}</td>
       <td>${row[2]}</td>
       <td>${row[3] ? "Yes" : "No"}</td>
-      <td>${row[4]===null?"NULL":row[4]}</td>
+      <td>${row[4] === null ? "NULL" : row[4]}</td>
       <td>${row[5] ? "Yes" : "No"}</td>
     </tr>`;
-  });
-}
+        });
+      }
 
-// Table dropdown event
-document.getElementById('tableList').onchange = function() {
-  const table = this.value;
-  showTableSchemaFor(table);
-};
-
-  </script>
-</body>
-
+      document.getElementById("tableList").onchange = function () {
+        const table = this.value;
+        showTableSchemaFor(table);
+      };
+    </script>
+  </body>
 </html>
