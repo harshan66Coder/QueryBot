@@ -80,6 +80,24 @@
     <label>Generated Example Question <span id="exampleLoader" class="spinner-border spinner-border-sm"
         style="display: none;"></span></label>
     <textarea id="exampleQ" readonly></textarea>
+    <div id="chartCode"></div>
+<div class="section" id="tableInspectorSection" style="display:none;">
+  <h2>Table Inspector</h2>
+  <label for="tableList" style="color:white; font-weight:bold;">Select Table:</label>
+  <select id="tableList" class="form-select" style="width:auto; display:inline-block; margin-left:12px;"></select>
+
+  <div style="margin-top:16px;">
+    <div>
+      <b>CREATE TABLE SQL:</b>
+      <pre id="tableCreateSQL" style="color:#aad; background:#1c1d20;padding:10px;margin-top:8px;max-width:100%;overflow-x:auto;"></pre>
+    </div>
+    <div style="margin-top:22px">
+      <b>Columns &amp; Types</b>
+      <table id="tableColsInfo" style="background-color:#1c1d20; color:white;"></table>
+    </div>
+  </div>
+</div>
+
   </div>
 
   <div class="section">
@@ -177,6 +195,7 @@
           const desc = await geminiPrompt(`You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`);
           const exampleQ = await geminiPrompt(`Based on the following description, generate a simple question a user might ask:\n\n${desc}`);
           document.getElementById('exampleQ').value = exampleQ;
+          refreshTableInspector();
         } catch (err) {
           console.error('Error during upload:', err);
           alert('Upload failed. Check console for details.');
@@ -322,6 +341,64 @@
       const exampleQ = document.getElementById('exampleQ').value;
       document.getElementById('question').value = exampleQ;
     };
+  async function refreshTableInspector() {
+  // Get all table names
+  const tableNameRes = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+  if (!tableNameRes.length) return document.getElementById('tableInspectorSection').style.display='none';
+
+  const tables = tableNameRes[0].values.map(r=>r[0]);
+  const sel = document.getElementById('tableList');
+  sel.innerHTML = '';
+  tables.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    sel.appendChild(opt);
+  });
+  document.getElementById('tableInspectorSection').style.display = 'block';
+  showTableSchemaFor(tables[0]);
+}
+
+function showTableSchemaFor(table) {
+  // 1. Create Table SQL
+  let createSQL = "";
+  try {
+    const createSQLArr = db.exec(`SELECT sql FROM sqlite_master WHERE type='table' AND name=?`, [table]);
+    createSQL = createSQLArr[0]?.values[0]?.[0] || "(not found)";
+  } catch {
+    createSQL = "(not found)";
+  }
+  document.getElementById('tableCreateSQL').textContent = createSQL;
+
+  // 2. Table Columns Info
+  let tableInfo = [];
+  try {
+    const tiRes = db.exec(`PRAGMA table_info(${table})`);
+    tableInfo = tiRes[0]?.values || [];
+  } catch {
+    tableInfo = [];
+  }
+  const tbl = document.getElementById('tableColsInfo');
+  tbl.innerHTML = '<tr><th>Name</th><th>Type</th><th>Not Null</th><th>Default</th><th>Primary Key</th></tr>';
+  tableInfo.forEach(row => {
+    // See: https://www.sqlite.org/pragma.html#pragma_table_info
+    // row: [cid, name, type, notnull, dflt_value, pk]
+    tbl.innerHTML += `<tr>
+      <td>${row[1]}</td>
+      <td>${row[2]}</td>
+      <td>${row[3] ? "Yes" : "No"}</td>
+      <td>${row[4]===null?"NULL":row[4]}</td>
+      <td>${row[5] ? "Yes" : "No"}</td>
+    </tr>`;
+  });
+}
+
+// Table dropdown event
+document.getElementById('tableList').onchange = function() {
+  const table = this.value;
+  showTableSchemaFor(table);
+};
+
   </script>
 </body>
 
