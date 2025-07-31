@@ -172,7 +172,7 @@
     </div>
 
     <div class="section">
-      <h2>2. Ask a Question About Your Data</h2>
+      <h2>2. Ask a question and provide context about your dataset</h2>
       <textarea
         id="question"
         placeholder="Ask something like 'Show all cars with mileage above 20'"
@@ -188,8 +188,10 @@
     </div>
 
     <div class="section">
-      <h2>Generated SQL Query</h2>
-      <textarea id="generatedSQL" readonly></textarea>
+      <h2>Generated Output</h2>
+      <div id="generatedSQL"
+        style="background-color: rgb(65, 64, 64); width: 100%; height: auto; border-radius: 15px; padding: 10px; color: white; font-family: Arial, sans-serif; white-space: pre-line;">
+      </div>
     </div>
 
     <div class="section">
@@ -228,7 +230,7 @@
     </div>
 
     <script>
-      const GEMINI_API_KEY = "AIzaSyCozdz8bgVQhRo8z6pIj2FvwZUylnw8BJA";
+      const GEMINI_API_KEY = "";
       const GEMINI_MODEL = "models/gemini-2.5-flash";
       let SQL,
         db,
@@ -261,76 +263,71 @@
         dbReady = true;
       });
 
-      document.getElementById("fileInput").onchange = async (e) => {
-        const errMessage = document.getElementById("errmessage");
-
+            document.getElementById('fileInput').onchange = async e => {
         if (!dbReady) return alert("SQL engine still loading...");
         const file = e.target.files[0];
         if (!file) return;
 
-        const ext = file.name.split(".").pop().toLowerCase();
-        if (!["csv", "sqlite", "db"].includes(ext)) {
-          e.target.value = "";
-          alert("Only CSV or SQLite files supported.");
-          errMessage.innerHTML = "only support CSV ,SQLite ,.db";
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['csv', 'sqlite', 'db'].includes(ext)) {
+          e.target.value = '';
+          alert('Only CSV or SQLite files supported.');
           return;
         }
 
-        if (ext === "sqlite" || ext === "db") {
-          const buf = await file.arrayBuffer();
-          console.log("buf:", buf);
-          db = new SQL.Database(new Uint8Array(buf));
-          console.log("db:", db);
+        if (ext === 'sqlite' || ext === 'db') {
+          try {
+            const buf = await file.arrayBuffer();
+            db = new SQL.Database(new Uint8Array(buf));
+            try {
+              const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table'");
+              if (tables.length > 0) {
+                const tableName = tables[0].values[0][0];
+                const result = db.exec(`SELECT * FROM ${tableName}`);
+                if (result.length > 0) {
+                  const headers = result[0].columns;
+                  const rows = result[0].values;
+                  tableData = `Columns: ${headers.join(', ')}\n` +
+                    rows.map(row => JSON.stringify(row)).join('\n');
+                }
+              }
+            } catch (e) {
+              console.warn("Couldn't extract sample data:", e);
+              tableData = "SQLite database loaded (couldn't extract sample data)";
+            }
+            alert('File uploaded and data inserted successfully!');
+            document.getElementById('exampleLoader').style.display = 'inline-block';
+          } catch (error) {
+            console.error('Error processing file:', error);
+            alert('Error processing file: ' + error.message);
+          }
         } else {
           const text = await file.text();
           const parsed = Papa.parse(text, { header: true });
           const headers = parsed.meta.fields;
-          const rows = parsed.data.filter((row) =>
-            Object.values(row).some((val) => val !== "")
-          );
-
-          tableData =
-            `Columns: ${headers.join(", ")}\n` +
-            rows
-              .slice(0, 10)
-              .map((r) => JSON.stringify(r))
-              .join("\n");
-
+          const rows = parsed.data.filter(row => Object.values(row).some(val => val !== ""));
+          tableData = `Columns: ${headers.join(', ')}\n` + rows.slice(0, 10).map(r => JSON.stringify(r)).join('\n');
           try {
             db.run(`DROP TABLE IF EXISTS data`);
-            db.run(
-              `CREATE TABLE data (${headers
-                .map((c) => `"${c}" TEXT`)
-                .join(", ")})`
-            );
-            const stmt = db.prepare(
-              `INSERT INTO data VALUES (${headers.map(() => "?").join(",")})`
-            );
-            rows.forEach((row) => {
-              stmt.bind(headers.map((h) => row[h]));
+            db.run(`CREATE TABLE data (${headers.map(c => `"${c}" TEXT`).join(', ')})`);
+            const stmt = db.prepare(`INSERT INTO data VALUES (${headers.map(() => '?').join(',')})`);
+            rows.forEach(row => {
+              stmt.bind(headers.map(h => row[h]));
               stmt.step();
               stmt.reset();
             });
             stmt.free();
-            alert("File uploaded and data inserted successfully!");
-            console.log("Upload complete");
-            document.getElementById("exampleLoader").style.display =
-              "inline-block";
-            const desc = await geminiPrompt(
-              `You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`
-            );
-            const exampleQ = await geminiPrompt(
-              `Based on the following description, generate a simple question a user might ask:\n\n${desc}`
-            );
-            document.getElementById("exampleQ").value = exampleQ;
-            refreshTableInspector();
+            alert('File uploaded and data inserted successfully!');
+            document.getElementById('exampleLoader').style.display = 'inline-block';
           } catch (err) {
-            console.error("Error during upload:", err);
-            alert("Upload failed. Check console for details.");
-          } finally {
-            document.getElementById("exampleLoader").style.display = "none";
+            console.error('Error during upload:', err);
+            alert('Upload failed. Check console for details.');
           }
         }
+        const desc = await geminiPrompt(`You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`);
+        const exampleQ = await geminiPrompt(`Based on the following description, generate a simple question a user might ask:\n\n${desc}`);
+        document.getElementById('exampleQ').value = exampleQ;
+        document.getElementById('exampleLoader').style.display = 'none';
       };
 
       async function getSchemaText() {
@@ -363,15 +360,41 @@
         }
 
         const schema = await getSchemaText();
+        // this sql is for the db.exec(sql) for res
         const sqlPrompt = `You are an expert in SQLite. Given this schema:\n${schema}\n\nAnswer this question:\n"${question}"\n\nProvide a valid SQLite query only, no explanation.`;
         let sql = await geminiPrompt(sqlPrompt);
         sql = sql.replace(/```(?:sqlite)?|```/g, "").trim();
-        document.getElementById("generatedSQL").value = sql;
+
+        // this is for the generated output in the div
+        const finalPrompt = `
+          You are an expert in SQLite.
+          Given the following schema:
+          ${schema}
+          And the following table data:
+          ${tableData}
+          Based on this, answer the following question:
+          "${question}"
+          Your response should include the following:
+          1) Objective Guess:
+          - Provide a brief and direct answer to the question.
+          2) Steps to Achieve This:
+          - List the steps needed to achieve the objective using the given data.
+          3) Tables and Relationships:
+          - Describe the relationships between the tables (do not include actual data).
+          4) SQLite Query:
+          - Provide a valid SQLite query that answers the question.
+          - Do not include any explanations—just the SQL query.
+          Formatting Requirements:
+          - Each topic should be numbered (1, 2, 3, etc.).
+          - Each topic's content should be formatted as bullet points.
+          - Add a new line at the end of each topic's section for proper innerHTML alignment in a div.
+          `;
+        let context = await geminiPrompt(finalPrompt);
+        document.getElementById('generatedSQL').innerHTML = context;
 
         let res;
         try {
           res = db.exec(sql);
-          console.log("SQL Result:", res);
         } catch (err) {
           document.getElementById(
             "result"
@@ -420,11 +443,9 @@
         const labelIndex = cols.findIndex(
           (_, i) => typeof vals[0][i] === "string"
         );
-        console.log(cols, labelIndex, vals[0]);
         const valueIndex = cols.findIndex(
           (_, i) => i !== labelIndex && !isNaN(parseFloat(vals[0][i]))
         );
-        console.log("Label Index:", labelIndex, "Value Index:", valueIndex);
         if (labelIndex === -1 || valueIndex === -1)
           return alert(
             "Improper data for charting kindly try another question."
@@ -432,7 +453,6 @@
 
         const labels = vals.map((r) => r[labelIndex]);
         const data = vals.map((r) => parseFloat(r[valueIndex]) || 0);
-        console.log("Labels:", labels, "Data:", data);
         resultDiv.innerHTML += '<canvas id="myChart"></canvas>';
         const ctx = document.getElementById("myChart").getContext("2d");
 
