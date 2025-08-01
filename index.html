@@ -62,7 +62,7 @@
       }
 
       .section {
-            /* display: none; */
+        /* display: none; */
 
         margin-bottom: 30px;
         color: white;
@@ -105,27 +105,25 @@
       .input-filed:hover {
         background-color: #2e2c2c;
       }
-        #exampleQ {
+      #exampleQ {
+        display: inline-block;
 
-      display: inline-block;
-      
-      min-width: 300px;
-      min-height: 200px;
-      padding: 10px;
-      background-color: #282a2b;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      white-space: pre-wrap; 
-      word-wrap: break-word;
-      font-family: Arial, sans-serif;
-    }
-    .section.outputLayer{
-      display: none;
-      padding: 10px;
-      border-radius: 5px;
-      margin-top: 15px;
-    }
-   
+        min-width: 300px;
+        min-height: 200px;
+        padding: 10px;
+        background-color: #282a2b;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: Arial, sans-serif;
+      }
+      .section.outputLayer {
+        display: none;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 15px;
+      }
     </style>
   </head>
 
@@ -211,9 +209,19 @@
 
     <div class="section">
       <h2>Generated Output</h2>
-      <div id="generatedSQL"
-        style="background-color: rgb(65, 64, 64); width: 100%; height: auto; border-radius: 15px; padding: 10px; color: white; font-family: Arial, sans-serif; white-space: pre-line;">
-      </div>
+      <div
+        id="generatedSQL"
+        style="
+          background-color: rgb(65, 64, 64);
+          width: 100%;
+          height: auto;
+          border-radius: 15px;
+          padding: 10px;
+          color: white;
+          font-family: Arial, sans-serif;
+          white-space: pre-line;
+        "
+      ></div>
     </div>
 
     <div class="section outputLayer" id="res">
@@ -248,19 +256,18 @@
         </div>
       </div>
       <div id="result"></div>
-      <div id="chartCode" ></div>
+      <div id="chartCode"></div>
     </div>
 
     <script>
+      const btnText = document.getElementById("btnText");
+      const resDiv = document.getElementById("res");
 
-    const btnText = document.getElementById("btnText");
-    const resDiv = document.getElementById("res");
-
-    if (btnText.textContent.trim().length > 0) {
-      resDiv.style.display = "block";
-    } else {
-      resDiv.style.display = "none";
-    }
+      if (btnText.textContent.trim().length > 0) {
+        resDiv.style.display = "block";
+      } else {
+        resDiv.style.display = "none";
+      }
 
       const GEMINI_API_KEY = "";
       const GEMINI_MODEL = "models/gemini-2.5-flash";
@@ -295,72 +302,96 @@
         dbReady = true;
       });
 
-            document.getElementById('fileInput').onchange = async e => {
+      document.getElementById("fileInput").onchange = async (e) => {
         if (!dbReady) return alert("SQL engine still loading...");
         const file = e.target.files[0];
         if (!file) return;
 
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (!['csv', 'sqlite', 'db'].includes(ext)) {
-          e.target.value = '';
-          alert('Only CSV or SQLite files supported.');
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (!["csv", "sqlite", "db"].includes(ext)) {
+          e.target.value = "";
+          alert("Only CSV or SQLite files supported.");
           return;
         }
 
-        if (ext === 'sqlite' || ext === 'db') {
+        if (ext === "sqlite" || ext === "db") {
           try {
             const buf = await file.arrayBuffer();
             db = new SQL.Database(new Uint8Array(buf));
             try {
-              const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table'");
+              const tables = db.exec(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+              );
               if (tables.length > 0) {
                 const tableName = tables[0].values[0][0];
                 const result = db.exec(`SELECT * FROM ${tableName}`);
                 if (result.length > 0) {
                   const headers = result[0].columns;
                   const rows = result[0].values;
-                  tableData = `Columns: ${headers.join(', ')}\n` +
-                    rows.map(row => JSON.stringify(row)).join('\n');
+                  tableData =
+                    `Columns: ${headers.join(", ")}\n` +
+                    rows.map((row) => JSON.stringify(row)).join("\n");
                 }
               }
             } catch (e) {
               console.warn("Couldn't extract sample data:", e);
-              tableData = "SQLite database loaded (couldn't extract sample data)";
+              tableData =
+                "SQLite database loaded (couldn't extract sample data)";
             }
-            alert('File uploaded and data inserted successfully!');
-            document.getElementById('exampleLoader').style.display = 'inline-block';
+            alert("File uploaded and data inserted successfully!");
+            document.getElementById("exampleLoader").style.display =
+              "inline-block";
+            refreshTableInspector();
           } catch (error) {
-            console.error('Error processing file:', error);
-            alert('Error processing file: ' + error.message);
+            console.error("Error processing file:", error);
+            alert("Error processing file: " + error.message);
           }
         } else {
           const text = await file.text();
           const parsed = Papa.parse(text, { header: true });
           const headers = parsed.meta.fields;
-          const rows = parsed.data.filter(row => Object.values(row).some(val => val !== ""));
-          tableData = `Columns: ${headers.join(', ')}\n` + rows.slice(0, 10).map(r => JSON.stringify(r)).join('\n');
+          const rows = parsed.data.filter((row) =>
+            Object.values(row).some((val) => val !== "")
+          );
+          tableData =
+            `Columns: ${headers.join(", ")}\n` +
+            rows
+              .slice(0, 10)
+              .map((r) => JSON.stringify(r))
+              .join("\n");
           try {
             db.run(`DROP TABLE IF EXISTS data`);
-            db.run(`CREATE TABLE data (${headers.map(c => `"${c}" TEXT`).join(', ')})`);
-            const stmt = db.prepare(`INSERT INTO data VALUES (${headers.map(() => '?').join(',')})`);
-            rows.forEach(row => {
-              stmt.bind(headers.map(h => row[h]));
+            db.run(
+              `CREATE TABLE data (${headers
+                .map((c) => `"${c}" TEXT`)
+                .join(", ")})`
+            );
+            const stmt = db.prepare(
+              `INSERT INTO data VALUES (${headers.map(() => "?").join(",")})`
+            );
+            rows.forEach((row) => {
+              stmt.bind(headers.map((h) => row[h]));
               stmt.step();
               stmt.reset();
             });
             stmt.free();
-            alert('File uploaded and data inserted successfully!');
-            document.getElementById('exampleLoader').style.display = 'inline-block';
+            alert("File uploaded and data inserted successfully!");
+            document.getElementById("exampleLoader").style.display =
+              "inline-block";
             refreshTableInspector();
           } catch (err) {
-            console.error('Error during upload:', err);
-            alert('Upload failed. Check console for details.');
+            console.error("Error during upload:", err);
+            alert("Upload failed. Check console for details.");
           }
         }
-        const desc = await geminiPrompt(`You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`);
-        const exampleQ = await geminiPrompt(`From the description below, please generate a minimum of 5 simple one line user-friendly questions:\n\n${desc}`);
-        document.getElementById('exampleQ').value = exampleQ;
-        document.getElementById('exampleLoader').style.display = 'none';
+        const desc = await geminiPrompt(
+          `You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`
+        );
+        const exampleQ = await geminiPrompt(
+          `From the description below, please generate a minimum of 5 simple one line user-friendly questions:\n\n${desc}`
+        );
+        document.getElementById("exampleQ").value = exampleQ;
+        document.getElementById("exampleLoader").style.display = "none";
       };
 
       async function getSchemaText() {
@@ -386,7 +417,6 @@
         const btnChart = document.getElementById("chartQueryBtnText");
         const btnChartLoader = document.getElementById("chartLoader");
 
-        
         if (chartMode) {
           btnChart.innerHTML = "Loading...";
           btnChartLoader.style.display = "inline-block";
@@ -426,7 +456,7 @@
           - Add a new line at the end of each topic's section for proper innerHTML alignment in a div.
           `;
         let context = await geminiPrompt(finalPrompt);
-        document.getElementById('generatedSQL').innerHTML = context;
+        document.getElementById("generatedSQL").innerHTML = context;
 
         let res;
         try {
@@ -569,6 +599,13 @@
         });
         document.getElementById("tableInspectorSection").style.display =
           "block";
+
+        // Attach the event handler HERE, after populating
+        sel.onchange = function () {
+          showTableSchemaFor(this.value);
+        };
+
+        // Show the schema for the first (default) table
         showTableSchemaFor(tables[0]);
       }
 
