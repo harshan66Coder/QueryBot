@@ -62,8 +62,6 @@
       }
 
       .section {
-        /* display: none; */
-
         margin-bottom: 30px;
         color: white;
         padding: 20px;
@@ -102,28 +100,43 @@
         font-weight: bold;
         width: 100%;
       }
+
       .input-filed:hover {
         background-color: #2e2c2c;
       }
-      #exampleQ {
-        display: inline-block;
 
-        min-width: 300px;
-        min-height: 200px;
-        padding: 10px;
-        background-color: #282a2b;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        font-family: Arial, sans-serif;
-      }
-      .section.outputLayer {
-        display: none;
-        padding: 10px;
-        border-radius: 5px;
-        margin-top: 15px;
-      }
+      #exampleQ {
+      display: inline-block;
+      min-width: 300px;
+      min-height: 200px;
+      padding: 10px;
+      background-color: #282a2b;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      white-space: pre-wrap; 
+      word-wrap: break-word;
+      font-family: Arial, sans-serif;
+    }
+      #question {
+      display: inline-block;
+      min-width: 300px;
+      min-height: 50px;
+      padding: 10px;
+      background-color: #282a2b;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: Arial, sans-serif;
+    }
+
+    .section.outputLayer{
+      display: none;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 15px;
+    }
+   
     </style>
   </head>
 
@@ -139,6 +152,8 @@
 
       <p id="errmessage"></p>
 
+      <div id="generatedField" style="display: none" >
+
       <label
         >Generated Example Question
         <span
@@ -148,6 +163,10 @@
         ></span
       ></label>
       <textarea id="exampleQ"></textarea>
+
+      </div>
+
+
       <div class="section" id="tableInspectorSection" style="display: none">
         <h2>Table Inspector</h2>
         <label for="tableList" style="color: white; font-weight: bold"
@@ -157,10 +176,10 @@
           id="tableList"
           class="form-select"
           style="
-            width: 80px;
-            height: 45px;
+            width: fit-content;
             display: inline-block;
             margin-left: 12px;
+            color: rgb(17, 17, 17);
           "
         ></select>
 
@@ -191,7 +210,8 @@
       </div>
     </div>
 
-    <div class="section">
+
+    <div class="section" id="QuestionArea" style="display: none">
       <h2>2. Ask a question and provide context about your dataset</h2>
       <textarea
         id="question"
@@ -207,24 +227,14 @@
       </button>
     </div>
 
-    <div class="section">
+    <div class="section" id="generatedOutput" style="display: none;">
       <h2>Generated Output</h2>
       <div
         id="generatedSQL"
-        style="
-          background-color: rgb(65, 64, 64);
-          width: 100%;
-          height: auto;
-          border-radius: 15px;
-          padding: 10px;
-          color: white;
-          font-family: Arial, sans-serif;
-          white-space: pre-line;
-        "
-      ></div>
+       style="border: 1px solid #ccc; background-color: #282a2b; width: 100%; height: auto; border-radius: 5px; padding: 10px; color: white; font-family: Arial, sans-serif; white-space: pre-line;"></div>
     </div>
 
-    <div class="section outputLayer" id="res">
+    <div class="section" id="res" style="display:none">
       <h2>Output</h2>
 
       <div
@@ -260,16 +270,8 @@
     </div>
 
     <script>
-      const btnText = document.getElementById("btnText");
-      const resDiv = document.getElementById("res");
 
-      if (btnText.textContent.trim().length > 0) {
-        resDiv.style.display = "block";
-      } else {
-        resDiv.style.display = "none";
-      }
-
-      const GEMINI_API_KEY = "";
+      const GEMINI_API_KEY = "";  //please add the api key
       const GEMINI_MODEL = "models/gemini-2.5-flash";
       let SQL,
         db,
@@ -341,6 +343,8 @@
             alert("File uploaded and data inserted successfully!");
             document.getElementById("exampleLoader").style.display =
               "inline-block";
+            document.getElementById('generatedField').style.display = 'block';
+
             refreshTableInspector();
           } catch (error) {
             console.error("Error processing file:", error);
@@ -375,23 +379,31 @@
               stmt.reset();
             });
             stmt.free();
-            alert("File uploaded and data inserted successfully!");
-            document.getElementById("exampleLoader").style.display =
-              "inline-block";
+            alert('File uploaded and data inserted successfully!');
+            document.getElementById('exampleLoader').style.display = 'inline-block';
+            document.getElementById('generatedField').style.display = 'block';
             refreshTableInspector();
           } catch (err) {
             console.error("Error during upload:", err);
             alert("Upload failed. Check console for details.");
           }
         }
-        const desc = await geminiPrompt(
-          `You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`
-        );
-        const exampleQ = await geminiPrompt(
-          `From the description below, please generate a minimum of 5 simple one line user-friendly questions:\n\n${desc}`
-        );
-        document.getElementById("exampleQ").value = exampleQ;
-        document.getElementById("exampleLoader").style.display = "none";
+        const desc = await geminiPrompt(`You are given the following table data:\n\n${tableData}\n\nDescribe what kind of data this table contains.`);
+        const exampleQ = await geminiPrompt(`From the description below, please generate a minimum of 5 simple one line user-friendly questions:\n\n${desc}`);
+        document.getElementById('exampleQ').value = exampleQ;
+
+         const textValue = document.getElementById('exampleQ').value 
+
+        if(textValue.length > 0 ){
+           document.getElementById('QuestionArea').style.display = 'block';
+          const questionArea =document.getElementById('QuestionArea')
+            questionArea.scrollIntoView({ behavior: "smooth" });
+
+        }else{
+             document.getElementById('QuestionArea').style.display = 'none';
+        }
+
+        document.getElementById('exampleLoader').style.display = 'none';
       };
 
       async function getSchemaText() {
@@ -419,7 +431,9 @@
 
         if (chartMode) {
           btnChart.innerHTML = "Loading...";
+          
           btnChartLoader.style.display = "inline-block";
+
         } else {
           btnText.innerHTML = "Loading...";
           btnLoader.style.display = "inline-block";
@@ -461,6 +475,13 @@
         let res;
         try {
           res = db.exec(sql);
+
+          if(res.length > 0 ){
+         document.getElementById('res').style.display = 'block';
+         document.getElementById('generatedOutput').style.display = 'block';
+
+          }
+          
         } catch (err) {
           document.getElementById(
             "result"
