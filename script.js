@@ -19,13 +19,13 @@ btn.addEventListener("click", () => {
 
 function updateImage(theme) {
   if (theme === "dark-mode") {
-    themeImage.src = "/QueryBot/assets/dark.png";
+    themeImage.src = "assets/dark.png";
   } else {
-    themeImage.src = "/QueryBot/assets/light.png";
+    themeImage.src = "assets/light.png";
   }
 }
 
-const GEMINI_API_KEY = "AIzaSyCUIfnF8StLu0Jpg-dIZMUUQxnvgTUgGPw"; //please add the api key
+const GEMINI_API_KEY = ""; //please add the api key
 const GEMINI_MODEL = "models/gemini-2.5-flash";
 let SQL,
   db,
@@ -45,7 +45,6 @@ async function geminiPrompt(promptText) {
   );
   const data = await res.json();
   return (
-    console.log("!!!!!!!@@@@@@@", data),
     data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response"
   );
 }
