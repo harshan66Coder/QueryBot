@@ -1,34 +1,233 @@
 body {
-  background-color: black;
-  color: white;
+  font-family: sans-serif;
+  margin: 20px;
+  transition: background 0.3s, color 0.3s;
 }
-.input-filed {
-  width: 1000px;
-  cursor: pointer;
+
+body.light-mode {
+  background-color: white;
+  color: black;
+}
+body.dark-mode #themeImage {
+  color: white;
+  background-color: white;
+  border-radius: 50%;
+}
+body.light-mode #generatedSQL {
+  background-color: #e8f4fc;
+  color: black;
+}
+body.dark-mode #generatedSQL {
+  background-color: #2b2a2a;
+  color: rgb(248, 248, 248);
+}
+
+body.light-mode textarea {
+  background-color: #e8f4fc;
+  color: black;
+}
+
+body.light-mode#res {
+  background-color: #e8f4fc;
+  color: balck;
+}
+
+body.light-mode tr:nth-child(even) {
+  background: #e8f4fc;
+}
+
+body.light-mode .section {
+  color: #0e0101;
+  background-color: #f4f4f4;
+}
+
+body.light-mode #exampleQ,
+body.light-mode #question {
+  background-color: #e8f4fc;
+  color: #000;
+}
+
+body.dark-mode {
+  background-color: #020202;
+  color: #f8f8f8;
+}
+
+body.dark-mode textarea {
+  background-color: #111212;
+  color: #f2efef;
+}
+
+body.light-mode input {
+  color: rgb(7, 7, 7);
+}
+body.light-mode input:hover {
+  color: rgb(243, 237, 237);
+}
+
+body.dark-mode .input-filed {
   background-color: #36454f;
   color: white;
+}
+body.-mode .input-filed {
+  background-color: #36454f;
+  color: white;
+}
+
+body.dark-mode tr:nth-child(even) {
+  background: #2b2a2a;
+}
+
+body.dark-mode .section {
+  color: #ffffff;
+  background-color: #1e1e1e;
+}
+
+body.light-mode th {
+  background-color: rgb(93, 92, 92);
+  color: white;
+}
+
+body.dark-mode #exampleQ,
+body.dark-mode #question {
+  background-color: #282a2b;
+  color: white;
+}
+
+#togglebutton {
+  cursor: pointer;
+}
+textarea {
+  width: 100%;
+  height: 60px;
+  margin-bottom: 10px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th,
+td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+canvas {
+  max-width: 100%;
+  margin-top: 20px;
+}
+
+#chartCode {
+  white-space: pre-wrap;
+  padding: 10px;
+  border: 1px dashed #aaa;
+  margin-top: 20px;
+}
+
+button {
+  padding: 8px 12px;
+  margin-top: 5px;
+  cursor: pointer;
+}
+
+.code-block {
+  background: #1e1e1e;
+  color: #c5c8c6;
+  padding: 16px;
+  margin-top: 10px;
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  max-width: 50%;
+  max-height: 20%;
+  overflow-x: auto;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4);
+}
+
+.input-filed {
+  cursor: pointer;
   padding: 8px 16px;
   border-radius: 5px;
-  cursor: pointer;
   transition: background-color 0.3s;
   font-weight: bold;
-  width: 1000px;
+  width: 100%;
 }
+
 .input-filed:hover {
   background-color: #2e2c2c;
 }
 
-.custom-file-upload {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: sans-serif;
-}
-.upload-label:hover {
-  background-color: gray;
+#exampleQ {
+  display: inline-block;
+  min-width: 300px;
+  min-height: 200px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: Arial, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
 }
 
-.file-name {
-  font-size: 14px;
-  color: #555;
+#generatedSQL {
+  border: 1px solid #ccc;
+  width: 100%;
+  height: auto;
+  border-radius: 5px;
+  padding: 10px;
+  font-family: Arial, sans-serif;
+  white-space: pre-line;
+}
+
+#tableList {
+  width: fit-content;
+  display: inline-block;
+  margin-left: 12px;
+  color: rgb(17, 17, 17);
+}
+#tableCreateSQL {
+  color: #aad;
+  background: #1c1d20;
+  padding: 10px;
+  margin-top: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+#question {
+  display: inline-block;
+  min-width: 300px;
+  min-height: 50px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  white-space: pre-wrap;
+  margin: 10px;
+  word-wrap: break-word;
+  font-family: Arial, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.section.outputLayer {
+  display: none;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 15px;
 }
