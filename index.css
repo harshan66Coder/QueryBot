@@ -59,15 +59,12 @@ body.dark-mode textarea {
 body.light-mode input {
   color: rgb(7, 7, 7);
 }
-body.light-mode input:hover {
-  color: rgb(243, 237, 237);
-}
 
 body.dark-mode .input-filed {
   background-color: #36454f;
   color: white;
 }
-body.-mode .input-filed {
+body.mode .input-filed {
   background-color: #36454f;
   color: white;
 }
@@ -166,10 +163,6 @@ button {
   transition: background-color 0.3s;
   font-weight: bold;
   width: 100%;
-}
-
-.input-filed:hover {
-  background-color: #2e2c2c;
 }
 
 #exampleQ {

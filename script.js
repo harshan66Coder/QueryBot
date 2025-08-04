@@ -44,9 +44,7 @@ async function geminiPrompt(promptText) {
     }
   );
   const data = await res.json();
-  return (
-    data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response"
-  );
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
 }
 
 initSqlJs({
