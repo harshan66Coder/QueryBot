@@ -33,8 +33,11 @@
         >Upload CSV <span class="text-danger">(.csv)</span> or SQLite database
         <span class="text-danger">(.sqlite , .db)</span>
       </label>
-      <input type="file" id="fileInput" class="input-filed mt-2" /><br /><br />
-
+      <div>
+        <input type="file" id="fileInput" class="input-filed mr-2" />
+        <button class="btn btn-primary" id="loadFileBtn" style="margin-left: 16px;">Load File</button><br /><br />
+      </div>
+      
       <p id="errmessage"></p>
 
       <div id="generatedField" style="display: none">

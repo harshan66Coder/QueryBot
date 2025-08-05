@@ -25,7 +25,12 @@ function updateImage(theme) {
   }
 }
 
-const GEMINI_API_KEY = ""; //please add the api key
+if (localStorage.getItem('file')) {
+  window.addEventListener('DOMContentLoaded', () => {
+    loadFileFromLocalStorage('fileInput');
+  });
+}
+
 const GEMINI_MODEL = "models/gemini-2.5-flash";
 let SQL,
   db,
@@ -56,9 +61,41 @@ initSqlJs({
   dbReady = true;
 });
 
-document.getElementById("fileInput").onchange = async (e) => {
+function storeFileToLocalStorage(file) {
+  const fileName = file.name;
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  }).then(base64 => {
+    localStorage.setItem('file', JSON.stringify({ base64, fileName }));
+    alert("File saved to local storage.");
+  })
+    .catch(err => console.error("File reading error:", err));
+}
+
+function loadFileFromLocalStorage(fileInputId) {
+  const { base64, fileName } = JSON.parse(localStorage.getItem('file'));
+  if (!base64) return alert("No saved file found in local storage.");
+
+  fetch(base64)
+    .then(res => res.blob())
+    .then(blob => {
+      const file = new File([blob], fileName, { type: blob.type });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      const input = document.getElementById(fileInputId);
+      input.files = dataTransfer.files;
+    })
+    .catch(err => console.error("Error loading file from local storage:", err));
+}
+
+document.getElementById('loadFileBtn').onclick = async () => {
+  const fileInput = document.getElementById("fileInput");
+
   if (!dbReady) return alert("SQL engine still loading...");
-  const file = e.target.files[0];
+  const file = fileInput.files[0];
   if (!file) return;
 
   const ext = file.name.split(".").pop().toLowerCase();
@@ -155,6 +192,17 @@ document.getElementById("fileInput").onchange = async (e) => {
   }
 
   document.getElementById("exampleLoader").style.display = "none";
+
+}
+
+document.getElementById("fileInput").onchange = async (e) => {
+  if (e.target.files[0].size > 5 * 1024 * 1024) {
+    e.target.value = "";
+    alert("File size exceeds 5 MB limit.");
+    return;
+  } else {
+    storeFileToLocalStorage(e.target.files[0]);
+  }
 };
 
 async function getSchemaText() {
@@ -369,12 +417,10 @@ async function refreshTableInspector() {
   });
   document.getElementById("tableInspectorSection").style.display = "block";
 
-  // Attach the event handler HERE, after populating
   sel.onchange = function () {
     showTableSchemaFor(this.value);
   };
 
-  // Show the schema for the first (default) table
   showTableSchemaFor(tables[0]);
 }
 
