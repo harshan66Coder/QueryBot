@@ -31,6 +31,7 @@ if (localStorage.getItem('file')) {
   });
 }
 
+const GEMINI_API_KEY = ""; //please add the api key
 const GEMINI_MODEL = "models/gemini-2.5-flash";
 let SQL,
   db,
