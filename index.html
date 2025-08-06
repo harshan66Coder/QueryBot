@@ -23,10 +23,20 @@
   </head>
 
   <body>
+      <button id="topBtn">⬆ Go to Top</button>
+
     <div id="togglebutton" class="theme-toggle">
       <img id="themeImage" src="assets/dark.png" alt="Theme Image" width="30" />
     </div>
-    <div class="section">
+      <div class="dynamic-fields">
+  <label for="model">MODEL NAME:</label>
+  <input type="text" id="model" class="model-input" required placeholder="Please enter the model name..." />
+
+   <label for="apiKey">API KEY:</label>
+  <input type="password" id="apiKey" class="apiKey-input"   onpaste="return true"
+  oncopy="return false" required placeholder="Please add the APIKEY..." />
+      </div>
+    <div class="section p-1 mt-4">
       <h2>1. Upload File (CSV or SQLite)</h2>
 
       <label for="input"
@@ -34,7 +44,7 @@
         <span class="text-danger">(.sqlite , .db)</span>
       </label>
       <div>
-        <input type="file" id="fileInput" class="input-filed mr-2" />
+        <input type="file" id="fileInput" class="input-filed ml-2" />
         <button class="btn btn-primary" id="loadFileBtn" style="margin-left: 16px;">Load File</button><br /><br />
       </div>
       
@@ -98,34 +108,40 @@
     <div class="section" id="res" style="display: none">
       <h2 class="mt-2">Output</h2>
 
-      <div
-        class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"
-      >
-        <button class="btn btn-primary mb-3" id="downloadBtn">
-          Download Table CSV
-        </button>
+       <div class="d-flex align-items-center justify-content-start gap-2 mb-4" 
+     style="flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;">
 
-        <textarea
-          id="chartQuestion"
-          class="form-control"
-          style="flex: 1; height: 30px; width: 700px"
-          placeholder="Ask something like 'Show average price by brand'"
-        ></textarea>
+  <button class="btn btn-primary" id="downloadBtn" style="flex-shrink: 0; height: 38px;">
+    Download CSV
+  </button>
 
-        <div class="d-flex gap-2">
-          <button class="btn btn-primary mb-3" id="chartQueryBtn">
-            <span id="chartQueryBtnText">Generate Bar Chart</span>
-            <span
-              id="chartLoader"
-              class="spinner-border spinner-border-sm"
-              style="display: none"
-            ></span>
-          </button>
-          <button class="btn btn-primary mb-3" id="downloadChartJs">
-            Download Chart JS Code
-          </button>
-        </div>
-      </div>
+  <textarea
+    id="chartQuestion"
+    class=""
+    style="min-width: 100px; height: 38px; resize: none; flex-shrink: 0;"
+    placeholder="Ask something like 'Show average price by brand'"
+  ></textarea>
+
+  <select id="chartType" class="" 
+          style="min-width: 100px; height: 38px; flex-shrink: 0;">
+    <option value="bar">Bar</option>
+    <option value="line">Line</option>
+    <option value="pie">Pie</option>
+    <option value="doughnut">Doughnut</option>
+    <option value="radar">Radar</option>
+    <option value="polarArea">Polar Area</option>
+  </select>
+
+  <button class="btn btn-primary" id="chartQueryBtn" style="flex-shrink: 0; height: 38px;">
+    <span id="chartQueryBtnText">Generate Chart</span>
+    <span id="chartLoader" class="spinner-border spinner-border-sm" style="display: none"></span>
+  </button>
+
+  <button class="btn btn-primary" id="downloadChartJs" style="flex-shrink: 0; height: 38px;">
+    Download Chart JS
+  </button>
+
+</div>
       <div id="result"></div>
       <div id="chartCode"></div>
     </div>

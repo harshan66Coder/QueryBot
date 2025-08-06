@@ -1,3 +1,18 @@
+    const topBtn = document.getElementById("topBtn");
+window.onscroll = function () {
+      if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+        topBtn.style.display = "block";
+      } else {
+        topBtn.style.display = "none";
+      }
+    };
+
+     topBtn.addEventListener("click", () => {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    });
 const btn = document.getElementById("togglebutton");
 const themeImage = document.getElementById("themeImage");
 
@@ -31,27 +46,33 @@ if (localStorage.getItem('file')) {
   });
 }
 
-const GEMINI_API_KEY = ""; //please add the api key
-const GEMINI_MODEL = "models/gemini-2.5-flash";
 let SQL,
   db,
   dbReady = false,
   tableData = "";
 
 async function geminiPrompt(promptText) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-      }),
-    }
-  );
+
+   const model = document.getElementById("model").value.trim();
+      const apiKey = document.getElementById("apiKey").value.trim();
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [{ role: "user", content: promptText }],
+    }),
+  });
+
   const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
+  console.log("test",data)
+  return data?.choices?.[0]?.message?.content || "No response";
 }
+
 
 initSqlJs({
   locateFile: (file) =>
@@ -240,9 +261,9 @@ async function runLLMQuery(question, chartMode = false) {
 
   const schema = await getSchemaText();
   // this sql is for the db.exec(sql) for res
-  const sqlPrompt = `You are an expert in SQLite. Given this schema:\n${schema}\n\nAnswer this question:\n"${question}"\n\nProvide a valid SQLite query only, no explanation.`;
+  const sqlPrompt = `You are an expert in SQLite. Given this schema:\n${schema}\n\nAnswer this question:\n"${question}"\n\nProvide a valid SQLite query only, no explanation,strictly only the query`;
   let sql = await geminiPrompt(sqlPrompt);
-  sql = sql.replace(/```(?:sqlite)?|```/g, "").trim();
+  sql = sql.replace(/```(?:sql|sqlite)?\s*|```/gi, "").trim();
 
   // this is for the generated output in the div
   const finalPrompt = `
@@ -339,36 +360,78 @@ async function runLLMQuery(question, chartMode = false) {
 
   const labels = vals.map((r) => r[labelIndex]);
   const data = vals.map((r) => parseFloat(r[valueIndex]) || 0);
-  resultDiv.innerHTML += '<canvas id="myChart"></canvas>';
+resultDiv.innerHTML += '<canvas id="myChart"></canvas>';
   const ctx = document.getElementById("myChart").getContext("2d");
 
-  const chartConfig = {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: `${cols[valueIndex]} by ${cols[labelIndex]}`,
-          data,
-          backgroundColor: [
-            "#4a90e2",
-            "#50e3c2",
-            "#b8e986",
-            "#f5a623",
-            "#e94e77",
-          ],
+  const chartTypeSelect = document.getElementById("chartType");
+const selectedChartType = chartTypeSelect.value;
+
+
+const isDarkMode = document.body.classList.contains("dark-mode"); 
+const gridColor = "#888888";
+
+const chartConfig = {
+  type: selectedChartType,
+  data: {
+    labels,
+    datasets: [
+      {
+        label: `${cols[valueIndex]} by ${cols[labelIndex]}`,
+        data,
+        backgroundColor: [
+          "#4a90e2",
+          "#50e3c2",
+          "#b8e986",
+          "#f5a623",
+          "#e94e77",
+        ],
+        borderColor: "#689fddff",
+        borderWidth: 2,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        labels: {
+          color: isDarkMode ? "#ffffff" : "#000000",
         },
-      ],
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { beginAtZero: true },
+      },
+      tooltip: {
+        bodyColor: isDarkMode ? "#ffffff" : "#000000",
+        backgroundColor: isDarkMode ? "#333" : "#f0f0f0",
+        titleColor: isDarkMode ? "#ffffff" : "#000000",
       },
     },
-  };
+    scales:
+      selectedChartType === "bar" || selectedChartType === "line"
+        ? {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: isDarkMode ? "#ffffff" : "#000000",
+              },
+              grid: {
+                color: gridColor,
+                borderColor: gridColor,
+              },
+            },
+            x: {
+              ticks: {
+                color: isDarkMode ? "#ffffff" : "#000000",
+              },
+              grid: {
+                color: gridColor,
+                borderColor: gridColor,
+              },
+            },
+          }
+        : {}, 
+  },
+};
 
-  new Chart(ctx, chartConfig);
+new Chart(ctx, chartConfig);
   const jsCode = "const config = " + JSON.stringify(chartConfig, null, 2);
   document.getElementById("chartCode").innerText =
     "// Chart.js Code Generated by AI\n" + jsCode;

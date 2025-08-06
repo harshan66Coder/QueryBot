@@ -1,3 +1,61 @@
+.model-input {
+  width: 300px;
+  padding: 1px;
+  border: none;
+}
+
+#topBtn {
+  display: none;
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 99;
+  border: none;
+  outline: none;
+  background-color: #333;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+#chartQuestion{
+  height: 60px;
+  transition: background-color 0.3s, color 0.3s;
+  width: 50%;
+  margin-bottom: 2px;
+  border-radius: 5px;
+}
+
+#downloadBtn{
+    margin-bottom: 3px;
+}
+#topBtn:hover {
+  background-color: #427df1;
+}
+.apiKey-input {
+  width: 600px;
+  padding: 1px;
+  border: none;
+}
+.dynamic-fields {
+  padding: 5px;
+  margin: 10px;
+}
+body.light-mode .model-input,
+body.light-mode .apiKey-input {
+  background-color: #e8f4fc;
+  color: #000;
+  border: 1px solid black;
+}
+body.dark-mode .model-input,
+body.dark-mode .apiKey-input {
+  background-color: #36454f;
+  color: #f8f8f8;
+  border: 1px solid rgb(249, 248, 248);
+}
+
 body {
   font-family: sans-serif;
   margin: 20px;
@@ -163,6 +221,8 @@ button {
   transition: background-color 0.3s;
   font-weight: bold;
   width: 100%;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 #exampleQ {
