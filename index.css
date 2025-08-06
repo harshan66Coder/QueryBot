@@ -3,7 +3,16 @@
   padding: 1px;
   border: none;
 }
-
+.add-btn{
+    height: 35px;
+}
+.clr-btn{
+        height: 35px;
+}
+.btns{
+    margin-top: 2px;
+    margin-right: 22px;
+}
 #topBtn {
   display: none;
   position: fixed;
@@ -35,12 +44,11 @@
   background-color: #427df1;
 }
 .apiKey-input {
-  width: 600px;
+  width:500px;
   padding: 1px;
   border: none;
 }
 .dynamic-fields {
-  padding: 5px;
   margin: 10px;
 }
 body.light-mode .model-input,

@@ -1,3 +1,43 @@
+    async function hashValue(value) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(value);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function saveToLocal() {
+      const model = document.getElementById('model').value;
+      const apiKey = document.getElementById('apiKey').value;
+
+      if (!model || !apiKey) {
+        alert("Both fields are required.");
+        return;
+      }
+      const hashedKey = await hashValue(apiKey);
+
+      localStorage.setItem('model', model); 
+      localStorage.setItem('apiKey', apiKey); 
+      localStorage.setItem('hashedKey', hashedKey);
+
+      alert("Values saved to localStorage (also hashed internally).");
+    }
+    function clearLocal() {
+      localStorage.removeItem('model');
+      localStorage.removeItem('apiKey');
+      localStorage.removeItem('hashedKey');
+      document.getElementById('model').value = '';
+      document.getElementById('apiKey').value = '';
+    }
+
+    window.onload = function () {
+      const model = localStorage.getItem('model');
+      const apiKey = localStorage.getItem('apiKey');
+
+      if (model) document.getElementById('model').value = model;
+      if (apiKey) document.getElementById('apiKey').value = apiKey;
+    }; 
+
     const topBtn = document.getElementById("topBtn");
 window.onscroll = function () {
       if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
