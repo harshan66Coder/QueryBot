@@ -1,10 +1,27 @@
     async function hashValue(value) {
       const encoder = new TextEncoder();
       const data = encoder.encode(value);
+      console.log("data",data)
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      console.log("hashBuffer",hashBuffer)
       const hashArray = Array.from(new Uint8Array(hashBuffer));
+
+      console.log("hashArray",hashArray)
       return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+
     }
+
+let zoomLevel = 1;
+
+  function zoomIn() {
+    zoomLevel += 0.1;
+    document.getElementById("myChart").style.transform = `scale(${zoomLevel})`;
+  }
+
+  function zoomOut() {
+    zoomLevel = Math.max(0.5, zoomLevel - 0.1);
+    document.getElementById("myChart").style.transform = `scale(${zoomLevel})`;
+  }
 
     async function saveToLocal() {
       const model = document.getElementById('model').value;
@@ -351,7 +368,7 @@ async function runLLMQuery(question, chartMode = false) {
     return;
   } finally {
     if (chartMode) {
-      btnChart.innerHTML = "Generate Bar Chart";
+      btnChart.innerHTML = "Generate Chart";
       btnChartLoader.style.display = "none";
     } else {
       btnText.innerHTML = "Get Table";

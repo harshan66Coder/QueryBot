@@ -157,6 +157,7 @@ body.dark-mode #question {
 
 #togglebutton {
   cursor: pointer;
+  top: 10px;
 }
 textarea {
   width: 100%;

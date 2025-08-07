@@ -136,10 +136,9 @@
           style="min-width: 100px; height: 38px; flex-shrink: 0;">
     <option value="bar">Bar</option>
     <option value="line">Line</option>
-    <option value="pie">Pie</option>
-    <option value="doughnut">Doughnut</option>
     <option value="radar">Radar</option>
     <option value="polarArea">Polar Area</option>
+    <option value="doughnut">Doughnut</option>
   </select>
 
   <button class="btn btn-primary" id="chartQueryBtn" style="flex-shrink: 0; height: 38px;">
@@ -153,8 +152,11 @@
 
 </div>
       <div id="result"></div>
+      <button onclick="zoomIn()" class="btn btn-outline-primary">Zoom In + </button>
+<button onclick="zoomOut()" class="btn btn-outline-primary">Zoom Out -</button>
       <div id="chartCode"></div>
     </div>
+    
     <script src="script.js"></script>
   </body>
 </html>
