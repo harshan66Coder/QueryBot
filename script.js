@@ -1,9 +1,7 @@
     async function hashValue(value) {
       const encoder = new TextEncoder();
       const data = encoder.encode(value);
-      console.log("data",data)
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      console.log("hashBuffer",hashBuffer)
       const hashArray = Array.from(new Uint8Array(hashBuffer));
 
       console.log("hashArray",hashArray)
@@ -126,7 +124,6 @@ async function geminiPrompt(promptText) {
   });
 
   const data = await res.json();
-  console.log("test",data)
   return data?.choices?.[0]?.message?.content || "No response";
 }
 
