@@ -1,70 +1,81 @@
-📊 DATASET QUERY & VISUALIZATION TOOL
+# QueryBot: Dataset Query & Visualization Tool
 
-    This tool allows users to upload datasets, explore their structure, and ask questions in plain English. It generates SQL queries, visualizations, and downloadable results automatically.
+An intuitive, client-side tool that allows you to upload datasets, ask questions in plain English, and receive SQL queries, visualizations, and downloadable results automatically.
 
-1📦 Setup & Usage
+---
 
-    # Clone the repository
-    1.1 git clone https://github.com/harshan66Coder/QueryBot.git
-    1.2 Open the main HTML file (index.html) in your browser.
-        Example: double-click index.html or right-click → Open with → Your browser
-    1.3 The tool will run locally — no server setup required.
+## About The Project
 
- # How It Works:
+QueryBot is a powerful, browser-based utility designed for rapid data exploration and analysis. It bridges the gap between complex database queries and simple, natural language questions. By integrating with Large Language Models (LLMs) through OpenRouter, it can understand user intent, generate the appropriate SQL queries, and present the results in both tabular and graphical formats.
 
- 🤖OpenRouter LLM Integration
+Since the tool runs entirely in your browser, there is no need for complex server setup or installation.
 
-    We use OpenRouter to connect with multiple Large Language Models (LLMs) for natural language query processing.
+---
 
-    1.4 Go to OpenRouter and search for a model in the search bar.
-    Example: "deepseek/deepseek-r1-0528:free"
-    1.5 Generate an API key from your OpenRouter account.
-    1.6 Enter:
-        Model Name → In the “Model Name” input field
-        API Key → In the “API Key” input field
-    1.7 The system will then process queries only with the chosen OpenRouter model.
+## Features
 
-2.🚀 Features
+* **Versatile File Upload**: Supports common data formats including `.csv`, `.sqlite3`, and `.db`.
+* **Automatic Data Schema Discovery**: Instantly detects and displays table names and column structures from your uploaded file.
+* **AI-Powered Question Suggestions**: Generates relevant, insightful questions based on the schema of your dataset to kickstart your analysis.
+* **Natural Language Querying**: Ask questions about your data in plain English. For example, "Show me the total sales for each region" will be translated into a valid SQL query.
+* **Comprehensive Analysis Output**: For each query, the system provides:
+    * An interpretation of your question.
+    * The step-by-step logic used to arrive at the answer.
+    * An analysis of required table relationships.
+    * The generated SQLite query.
+    * A corresponding `Chart.js` code snippet for the visualization.
+* **Interactive Results & Exporting**:
+    * View results in a dynamic, sortable table.
+    * Download the query results as a `.csv` file.
+    * Inspect the generated SQL query directly.
+* **Rich Data Visualization**: Automatically generates charts to provide visual insights using `Chart.js`, including:
+    * Bar Chart
+    * Line Chart
+    * Pie Chart
+    * Radar Chart
+    * Polar Area Chart
 
-2.1 Upload Your File
-    Supports .csv, .sqlite3, and .db formats.
+---
 
-2.2 View Data Structure
-    Automatically detects and displays:
-        >> Table names
-        >> Columns
-        >> Columns
+## Getting Started
 
-2.3 Get Smart Questions
-    The system suggests relevant questions based on your uploaded data.
+Follow these simple steps to get the tool up and running on your local machine.
 
-2.4 Ask Questions in Plain English
-    Users can describe their dataset and ask questions in plain English.
-    Example: "Show all data" → Generates relevant SQL query and output.
+### Prerequisites
 
-2.5 System Processes & Answers
-    For each question, the system provides:
+* A modern web browser (e.g., Chrome, Firefox, Safari, Edge).
+* `git` installed on your system to clone the repository.
 
-        >> Understanding of the query
-        >> Steps to solve it
-        >> Table relationships
-        >> Generated SQLite query
-        >> Chart visualization
-        >> Chart.js code snippet
+### Installation & Setup
 
-2.6 View & Download Results
+1.  **Clone the Repository**
+    Open your terminal or command prompt and run the following command:
+    ```sh
+    git clone [https://github.com/harshan66Coder/QueryBot.git](https://github.com/harshan66Coder/QueryBot.git)
+    ```
 
-       >>  Dynamic table view
-       >>  Export as .csv
-       >>  View generated SQL query
+2.  **Navigate to the Directory**
+    ```sh
+    cd QueryBot
+    ```
 
-2.7 Visual Insights
-    Auto-generated visualizations using Chart.js:
+3.  **Open the Application**
+    Open the `index.html` file in your web browser. You can typically do this by double-clicking the file or right-clicking and selecting "Open with" your preferred browser.
 
-       >> Bar chart
-       >> Line chart
-       >> Pie chart
-       >> Radar chart
-       >> Polar Area chart
+### Configuration: OpenRouter LLM Integration
 
+To enable natural language processing, you need to configure the tool with an API key from OpenRouter.
 
+1.  **Select a Model**
+    Go to the [OpenRouter](https://openrouter.ai/models) website and find a model suitable for your needs.
+    *Example Model Name:* `deepseek/deepseek-r1-0528:free`
+
+2.  **Generate an API Key**
+    Log in to your OpenRouter account and generate a new API key.
+
+3.  **Enter Credentials in the Tool**
+    In the QueryBot interface, locate the input fields for the LLM configuration:
+    * In the **Model Name** field, enter the name of the model you chose.
+    * In the **API Key** field, paste your generated OpenRouter API key.
+
+The system is now configured and will use your selected LLM to process all subsequent queries.
