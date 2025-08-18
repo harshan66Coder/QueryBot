@@ -79,3 +79,27 @@ To enable natural language processing, you need to configure the tool with an AP
     * In the **API Key** field, paste your generated OpenRouter API key.
 
 The system is now configured and will use your selected LLM to process all subsequent queries.
+
+
+---
+
+## Using the Sample Files
+
+To help you get started quickly, this repository includes a `sampleTestFiles` directory containing a sample CSV file and an SQLite database.
+
+### 1. Using the CSV File (`sampleTestFile`)
+
+1.  Launch the QueryBot application in your browser.
+2.  Click the file upload button and navigate to the `sampleTestFiles` folder.
+3.  Select the `sampleTestFile` (which is a CSV file).
+4.  Once the file is loaded, try asking some simple questions like:
+    * "Show all data"
+   
+
+### 2. Using the SQLite Database (`sampleSQLite`)
+
+1.  Launch the QueryBot application in your browser.
+2.  Click the file upload button and navigate to the `sampleTestFiles` folder.
+3.  Select the `sampleSQLite` file.
+4.  Once the database is loaded, you can explore its contents by asking:
+    * "Show all data"
