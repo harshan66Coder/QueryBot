@@ -50,8 +50,9 @@ Follow these simple steps to get the tool up and running on your local machine.
 
 1.  **Clone the Repository**
     Open your terminal or command prompt and run the following command:
+    git clone [URL]
     
-    git clone ```sh
+    ```sh
     https://github.com/harshan66Coder/QueryBot.git
     ```
 
