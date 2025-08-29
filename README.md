@@ -71,6 +71,7 @@ To enable natural language processing, you need to configure the tool with an AP
 1.  **Select a Model**
     Go to the [OpenRouter](https://openrouter.ai/models) website and find a model suitable for your needs.
     *Example Model Name:* `deepseek/deepseek-r1-0528:free`
+    *Example Api key:* `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`
 
 2.  **Generate an API Key**
     Log in to your OpenRouter account and generate a new API key.
